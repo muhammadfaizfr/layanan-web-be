@@ -7,6 +7,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\PembayaranController;
 use App\Http\Controllers\KontakController;
 use App\Http\Controllers\KontenGaleriController;
+use App\Http\Controllers\LaporanController;
 use Illuminate\Support\Facades\Route;
 
 // Endpoint login admin (Public)
@@ -14,6 +15,11 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Endpoint logout admin (Protected)
 Route::middleware('auth:sanctum')->post('/logout', [AuthController::class, 'logout']);
+
+// Endpoint Laporan Admin (Protected)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/laporan', [LaporanController::class, 'index']);
+});
 
 // Endpoint CRUD lainnya (Public atau di bawah Auth Sanctum sesuai kebutuhan, tapi di sini kita daftarkan agar bisa langsung diakses/diuji)
 Route::apiResource('pelanggan', PelangganController::class);
