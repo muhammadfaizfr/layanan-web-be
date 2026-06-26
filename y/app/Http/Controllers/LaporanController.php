@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Pembayaran;
+use App\Models\Pelanggan;
 use Illuminate\Http\Request;
 
 class LaporanController extends Controller
@@ -106,13 +108,21 @@ class LaporanController extends Controller
                     ];
                 });
 
+            // 6. Total Counts
+            $total_booking = Booking::count();
+            $total_pembayaran = Pembayaran::count();
+            $total_pelanggan = Pelanggan::count();
+
             // Mengembalikan response JSON yang sukses
             return response()->json([
                 'total_pendapatan' => $total_pendapatan,
                 'jumlah_tiket' => $jumlah_tiket,
                 'jumlah_pengunjung' => $jumlah_pengunjung,
                 'pendapatan_per_kategori' => $pendapatan_per_kategori,
-                'grafik_kunjungan' => $grafik_kunjungan
+                'grafik_kunjungan' => $grafik_kunjungan,
+                'total_booking' => $total_booking,
+                'total_pembayaran' => $total_pembayaran,
+                'total_pelanggan' => $total_pelanggan,
             ], 200);
 
         } catch (\Exception $e) {
