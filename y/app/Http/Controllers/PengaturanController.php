@@ -46,7 +46,7 @@ class PengaturanController extends Controller
             'jam_tutup' => 'sometimes|required|string',
             'kuota_harian' => 'sometimes|required|integer|min:0',
             'kebijakan_pembatalan_aktif' => 'sometimes|required|boolean',
-            'teks_kebijakan' => 'sometimes|required|string',
+            'teks_kebijakan' => 'sometimes|nullable|string',
         ]);
 
         if ($validator->fails()) {

@@ -18,6 +18,7 @@ class Kontak extends Model
     protected $fillable = [
         'nama',
         'email',
+        'subjek',
         'pesan',
         'tanggal_kirim',
     ];

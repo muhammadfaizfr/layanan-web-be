@@ -28,11 +28,13 @@ class KontenGaleriController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'judul_konten' => 'required|string|max:150',
-            'file' => 'required|string|max:255',
+            'file' => 'required|image|mimes:jpeg,png,jpg|max:10240', // Max 10MB
             'id_admin' => 'required|exists:tbl_admin,id_admin',
         ], [
             'judul_konten.required' => 'Judul konten wajib diisi.',
-            'file.required' => 'File path/name wajib diisi.',
+            'file.required' => 'File gambar wajib diunggah.',
+            'file.image' => 'File harus berupa gambar.',
+            'file.mimes' => 'Format gambar harus jpeg, png, atau jpg.',
             'id_admin.required' => 'ID Admin wajib diisi.',
             'id_admin.exists' => 'Admin tidak terdaftar dalam sistem.',
         ]);
@@ -44,11 +46,16 @@ class KontenGaleriController extends Controller
             ], 422);
         }
 
-        $galeri = KontenGaleri::create($request->only([
-            'judul_konten',
-            'file',
-            'id_admin'
-        ]));
+        $filePath = null;
+        if ($request->hasFile('file')) {
+            $filePath = $request->file('file')->store('galeri', 'public');
+        }
+
+        $galeri = KontenGaleri::create([
+            'judul_konten' => $request->judul_konten,
+            'file' => $filePath,
+            'id_admin' => $request->id_admin,
+        ]);
 
         return response()->json([
             'message' => 'Konten galeri berhasil ditambahkan',
@@ -80,7 +87,7 @@ class KontenGaleriController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $galeri = KontenGaleri::find($id);
+        $galeri = KontenGaleri::where('id_konten', $id)->first();
 
         if (!$galeri) {
             return response()->json([
@@ -90,13 +97,8 @@ class KontenGaleriController extends Controller
 
         $validator = Validator::make($request->all(), [
             'judul_konten' => 'sometimes|required|string|max:150',
-            'file' => 'sometimes|required|string|max:255',
+            'file' => 'sometimes|image|mimes:jpeg,png,jpg|max:10240',
             'id_admin' => 'sometimes|required|exists:tbl_admin,id_admin',
-        ], [
-            'judul_konten.required' => 'Judul konten wajib diisi.',
-            'file.required' => 'File path/name wajib diisi.',
-            'id_admin.required' => 'ID Admin wajib diisi.',
-            'id_admin.exists' => 'Admin tidak terdaftar dalam sistem.',
         ]);
 
         if ($validator->fails()) {
@@ -106,11 +108,19 @@ class KontenGaleriController extends Controller
             ], 422);
         }
 
-        $galeri->update($request->only([
-            'judul_konten',
-            'file',
-            'id_admin'
-        ]));
+        if ($request->has('judul_konten')) {
+            $galeri->judul_konten = $request->judul_konten;
+        }
+
+        if ($request->hasFile('file')) {
+            // Hapus file lama jika ada
+            if ($galeri->file && \Illuminate\Support\Facades\Storage::disk('public')->exists($galeri->file)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($galeri->file);
+            }
+            $galeri->file = $request->file('file')->store('galeri', 'public');
+        }
+
+        $galeri->save();
 
         return response()->json([
             'message' => 'Konten galeri berhasil diperbarui',
@@ -123,12 +133,17 @@ class KontenGaleriController extends Controller
      */
     public function destroy($id)
     {
-        $galeri = KontenGaleri::find($id);
+        $galeri = KontenGaleri::where('id_konten', $id)->first();
 
         if (!$galeri) {
             return response()->json([
                 'message' => 'Konten galeri tidak ditemukan'
             ], 404);
+        }
+
+        // Hapus file dari storage
+        if ($galeri->file && \Illuminate\Support\Facades\Storage::disk('public')->exists($galeri->file)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($galeri->file);
         }
 
         $galeri->delete();

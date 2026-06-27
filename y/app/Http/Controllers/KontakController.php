@@ -29,6 +29,7 @@ class KontakController extends Controller
         $validator = Validator::make($request->all(), [
             'nama' => 'required|string|max:100',
             'email' => 'required|email|max:100',
+            'subjek' => 'nullable|string|max:100',
             'pesan' => 'required|string',
             'tanggal_kirim' => 'nullable|date_format:Y-m-d H:i:s',
         ], [
@@ -48,7 +49,7 @@ class KontakController extends Controller
 
         // Jika tanggal_kirim tidak disediakan, kita bisa mengisinya dengan null agar database menggunakan default CURRENT_TIMESTAMP
         // atau kita set manual menggunakan now().
-        $data = $request->only(['nama', 'email', 'pesan']);
+        $data = $request->only(['nama', 'email', 'subjek', 'pesan']);
         if ($request->has('tanggal_kirim')) {
             $data['tanggal_kirim'] = $request->tanggal_kirim;
         }
@@ -96,6 +97,7 @@ class KontakController extends Controller
         $validator = Validator::make($request->all(), [
             'nama' => 'sometimes|required|string|max:100',
             'email' => 'sometimes|required|email|max:100',
+            'subjek' => 'sometimes|nullable|string|max:100',
             'pesan' => 'sometimes|required|string',
             'tanggal_kirim' => 'nullable|date_format:Y-m-d H:i:s',
         ], [
@@ -113,7 +115,7 @@ class KontakController extends Controller
             ], 422);
         }
 
-        $kontak->update($request->only(['nama', 'email', 'pesan', 'tanggal_kirim']));
+        $kontak->update($request->only(['nama', 'email', 'subjek', 'pesan', 'tanggal_kirim']));
 
         return response()->json([
             'message' => 'Pesan kontak berhasil diperbarui',
