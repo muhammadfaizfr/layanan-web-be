@@ -121,6 +121,8 @@ class PelangganController extends Controller
             ], 404);
         }
 
+        // Hapus semua booking terkait terlebih dahulu agar data pendapatan sinkron
+        \App\Models\Booking::where('id_pelanggan', $id)->delete();
         $pelanggan->delete();
 
         return response()->json([
