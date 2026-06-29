@@ -29,6 +29,8 @@ class PelangganController extends Controller
         $validator = Validator::make($request->all(), [
             'nama_lengkap' => 'required|string|max:100',
             'no_hp' => 'required|string|max:20',
+            'no_identitas' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:100',
         ], [
             'nama_lengkap.required' => 'Nama lengkap wajib diisi.',
             'no_hp.required' => 'Nomor HP wajib diisi.',
@@ -41,7 +43,7 @@ class PelangganController extends Controller
             ], 422);
         }
 
-        $pelanggan = Pelanggan::create($request->only(['nama_lengkap', 'no_hp']));
+        $pelanggan = Pelanggan::create($request->only(['nama_lengkap', 'no_hp', 'no_identitas', 'email']));
 
         return response()->json([
             'message' => 'Pelanggan berhasil ditambahkan',
@@ -84,6 +86,8 @@ class PelangganController extends Controller
         $validator = Validator::make($request->all(), [
             'nama_lengkap' => 'sometimes|required|string|max:100',
             'no_hp' => 'sometimes|required|string|max:20',
+            'no_identitas' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:100',
         ], [
             'nama_lengkap.required' => 'Nama lengkap wajib diisi.',
             'no_hp.required' => 'Nomor HP wajib diisi.',
@@ -96,7 +100,7 @@ class PelangganController extends Controller
             ], 422);
         }
 
-        $pelanggan->update($request->only(['nama_lengkap', 'no_hp']));
+        $pelanggan->update($request->only(['nama_lengkap', 'no_hp', 'no_identitas', 'email']));
 
         return response()->json([
             'message' => 'Data pelanggan berhasil diperbarui',
@@ -117,6 +121,8 @@ class PelangganController extends Controller
             ], 404);
         }
 
+        // Hapus semua booking terkait terlebih dahulu agar data pendapatan sinkron
+        \App\Models\Booking::where('id_pelanggan', $id)->delete();
         $pelanggan->delete();
 
         return response()->json([

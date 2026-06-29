@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Pembayaran;
+use App\Models\Pelanggan;
 use Illuminate\Http\Request;
 
 class LaporanController extends Controller
@@ -20,56 +22,58 @@ class LaporanController extends Controller
             $startDate = $request->query('start_date');
             $endDate = $request->query('end_date');
 
+            // Default ke 30 hari terakhir jika tidak ada filter (riset per 30 hari)
+            if (!$startDate && !$endDate) {
+                $startDate = \Carbon\Carbon::now()->subDays(30)->toDateString();
+                $endDate = \Carbon\Carbon::now()->toDateString();
+            }
+
             // 1. Total Pendapatan
-            // Mengambil jumlah total_payar dari booking yang status pembayarannya 'Valid'
-            $totalPendapatanQuery = Booking::whereHas('pembayaran', function ($query) {
-                $query->where('status_pembayaran', 'Valid');
-            });
+            // Mengambil jumlah total_harga (atau fallback total_payar) dari booking yang sudah dikonfirmasi
+            $totalPendapatanQuery = Booking::whereIn('status_booking', ['Dikonfirmasi', 'Selesai', 'Diproses', 'Lunas']);
 
             if ($startDate) {
-                $totalPendapatanQuery->whereDate('created_at', '>=', $startDate);
+                $totalPendapatanQuery->whereDate('tbl_booking.created_at', '>=', $startDate);
             }
             if ($endDate) {
-                $totalPendapatanQuery->whereDate('created_at', '<=', $endDate);
+                $totalPendapatanQuery->whereDate('tbl_booking.created_at', '<=', $endDate);
             }
 
-            $total_pendapatan = (float) $totalPendapatanQuery->sum('total_payar');
+            // Gunakan total_harga jika tersedia, fallback ke total_payar
+            $total_pendapatan = (float) $totalPendapatanQuery->sum(\DB::raw('COALESCE(total_harga, total_payar, 0)'));
 
             // 2. Jumlah Tiket Terjual
-            // Mengambil jumlah total tiket (jml_tiket) dari booking yang status pembayarannya 'Valid'
-            $jumlahTiketQuery = Booking::whereHas('pembayaran', function ($query) {
-                $query->where('status_pembayaran', 'Valid');
-            });
+            // Mengambil jumlah total tiket dari booking yang sudah dikonfirmasi
+            $jumlahTiketQuery = Booking::whereIn('status_booking', ['Dikonfirmasi', 'Selesai', 'Diproses', 'Lunas']);
 
             if ($startDate) {
-                $jumlahTiketQuery->whereDate('created_at', '>=', $startDate);
+                $jumlahTiketQuery->whereDate('tbl_booking.created_at', '>=', $startDate);
             }
             if ($endDate) {
-                $jumlahTiketQuery->whereDate('created_at', '<=', $endDate);
+                $jumlahTiketQuery->whereDate('tbl_booking.created_at', '<=', $endDate);
             }
 
-            $jumlah_tiket = (int) $jumlahTiketQuery->sum('jml_tiket');
+            // Gunakan jumlah_tiket jika tersedia, fallback ke jml_tiket
+            $total_tiket_terjual = (int) $jumlahTiketQuery->sum(\DB::raw('COALESCE(jumlah_tiket, jml_tiket, 0)'));
 
             // 3. Jumlah Pengunjung
-            // Setiap tiket melambangkan satu pengunjung, sehingga jumlah_pengunjung setara dengan jumlah_tiket terjual
-            $jumlah_pengunjung = $jumlah_tiket;
+            // Setiap tiket melambangkan satu pengunjung, sehingga jumlah_pengunjung setara dengan total_tiket_terjual
+            $jumlah_pengunjung = $total_tiket_terjual;
 
             // 4. Rekap Pendapatan per Kategori Tiket (jenis_tiket)
-            $kategoriQuery = Booking::whereHas('pembayaran', function ($query) {
-                $query->where('status_pembayaran', 'Valid');
-            });
+            $kategoriQuery = Booking::whereIn('status_booking', ['Dikonfirmasi', 'Selesai', 'Diproses', 'Lunas']);
 
             if ($startDate) {
-                $kategoriQuery->whereDate('created_at', '>=', $startDate);
+                $kategoriQuery->whereDate('tbl_booking.created_at', '>=', $startDate);
             }
             if ($endDate) {
-                $kategoriQuery->whereDate('created_at', '<=', $endDate);
+                $kategoriQuery->whereDate('tbl_booking.created_at', '<=', $endDate);
             }
 
             $pendapatan_per_kategori = $kategoriQuery
                 ->select('jenis_tiket')
-                ->selectRaw('SUM(total_payar) as total_pendapatan')
-                ->selectRaw('SUM(jml_tiket) as jumlah_tiket_terjual')
+                ->selectRaw('SUM(COALESCE(total_harga, total_payar, 0)) as total_pendapatan')
+                ->selectRaw('SUM(COALESCE(jumlah_tiket, jml_tiket, 0)) as jumlah_tiket_terjual')
                 ->groupBy('jenis_tiket')
                 ->get()
                 ->map(function ($item) {
@@ -81,21 +85,19 @@ class LaporanController extends Controller
                 });
 
             // 5. Grafik Kunjungan (Jumlah Pengunjung berdasarkan tanggal_pendakian)
-            $grafikQuery = Booking::whereHas('pembayaran', function ($query) {
-                $query->where('status_pembayaran', 'Valid');
-            });
+            $grafikQuery = Booking::whereIn('status_booking', ['Dikonfirmasi', 'Selesai', 'Diproses', 'Lunas']);
 
             if ($startDate) {
-                $grafikQuery->whereDate('created_at', '>=', $startDate);
+                $grafikQuery->whereDate('tbl_booking.created_at', '>=', $startDate);
             }
             if ($endDate) {
-                $grafikQuery->whereDate('created_at', '<=', $endDate);
+                $grafikQuery->whereDate('tbl_booking.created_at', '<=', $endDate);
             }
 
             $grafik_kunjungan = $grafikQuery
                 ->join('tbl_slot_pendakian', 'tbl_booking.id_slot', '=', 'tbl_slot_pendakian.id_slot')
                 ->select('tbl_slot_pendakian.tanggal_pendakian')
-                ->selectRaw('SUM(tbl_booking.jml_tiket) as jumlah_pengunjung')
+                ->selectRaw('SUM(COALESCE(tbl_booking.jumlah_tiket, tbl_booking.jml_tiket, 0)) as jumlah_pengunjung')
                 ->groupBy('tbl_slot_pendakian.tanggal_pendakian')
                 ->orderBy('tbl_slot_pendakian.tanggal_pendakian', 'asc')
                 ->get()
@@ -106,13 +108,35 @@ class LaporanController extends Controller
                     ];
                 });
 
+            // 6. Total Counts
+            // Total Booking berdasarkan jumlah tiket yang dipesan (bukan jumlah transaksi)
+            $totalBookingQuery = Booking::query();
+            if ($startDate) $totalBookingQuery->whereDate('tbl_booking.created_at', '>=', $startDate);
+            if ($endDate) $totalBookingQuery->whereDate('tbl_booking.created_at', '<=', $endDate);
+            $total_booking = (int) $totalBookingQuery->sum(\DB::raw('COALESCE(jumlah_tiket, jml_tiket, 0)'));
+            
+            // Total Pembayaran muncul berdasarkan jumlah transaksi
+            $totalPembayaranQuery = Pembayaran::query();
+            if ($startDate) $totalPembayaranQuery->whereDate('tbl_pembayaran.created_at', '>=', $startDate);
+            if ($endDate) $totalPembayaranQuery->whereDate('tbl_pembayaran.created_at', '<=', $endDate);
+            $total_pembayaran = $totalPembayaranQuery->count();
+            
+            $totalPelangganQuery = Pelanggan::query();
+            if ($startDate) $totalPelangganQuery->whereDate('tbl_pelanggan.created_at', '>=', $startDate);
+            if ($endDate) $totalPelangganQuery->whereDate('tbl_pelanggan.created_at', '<=', $endDate);
+            $total_pelanggan = $totalPelangganQuery->count();
+
             // Mengembalikan response JSON yang sukses
             return response()->json([
                 'total_pendapatan' => $total_pendapatan,
-                'jumlah_tiket' => $jumlah_tiket,
+                'total_tiket_terjual' => $total_tiket_terjual,
+                'jumlah_tiket' => $total_tiket_terjual, // backward compat
                 'jumlah_pengunjung' => $jumlah_pengunjung,
                 'pendapatan_per_kategori' => $pendapatan_per_kategori,
-                'grafik_kunjungan' => $grafik_kunjungan
+                'grafik_kunjungan' => $grafik_kunjungan,
+                'total_booking' => $total_booking,
+                'total_pembayaran' => $total_pembayaran,
+                'total_pelanggan' => $total_pelanggan,
             ], 200);
 
         } catch (\Exception $e) {

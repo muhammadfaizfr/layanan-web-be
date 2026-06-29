@@ -13,11 +13,15 @@ class Booking extends Model
     protected $primaryKey = 'id_booking';
 
     protected $fillable = [
+        'id_tiket',
         'id_pelanggan',
         'id_slot',
         'jenis_tiket',
-        'jml_tiket',
-        'total_payar', // Sesuai kolom di migrasi: total_payar
+        'jumlah_tiket',
+        'harga_tiket',
+        'total_harga',
+        'jml_tiket',        // backward compatibility
+        'total_payar',       // backward compatibility
         'status_booking',
     ];
 
