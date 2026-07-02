@@ -130,6 +130,53 @@ class PembayaranController extends Controller
     }
 
     /**
+     * Upload bukti pembayaran.
+     */
+    public function uploadBukti(Request $request, $id)
+    {
+        $pembayaran = Pembayaran::find($id);
+
+        if (!$pembayaran) {
+            return response()->json([
+                'message' => 'Pembayaran tidak ditemukan'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'bukti_transfer' => 'required|image|mimes:jpeg,png,jpg,webp|max:20480',
+        ], [
+            'bukti_transfer.required' => 'File bukti transfer wajib diisi.',
+            'bukti_transfer.image' => 'File harus berupa gambar.',
+            'bukti_transfer.mimes' => 'Format file yang didukung: jpeg, png, jpg, webp.',
+            'bukti_transfer.max' => 'Ukuran file maksimal 20MB.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        if ($request->hasFile('bukti_transfer')) {
+            $file = $request->file('bukti_transfer');
+            $path = $file->store('bukti_transfer', 'public');
+            
+            $pembayaran->bukti_transfer = '/storage/' . $path;
+            $pembayaran->save();
+
+            return response()->json([
+                'message' => 'Bukti pembayaran berhasil diupload',
+                'data' => $pembayaran
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => 'File bukti transfer tidak ditemukan'
+        ], 400);
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy($id)

@@ -9,6 +9,7 @@ use App\Http\Controllers\KontakController;
 use App\Http\Controllers\KontenGaleriController;
 use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PengaturanController;
+use App\Http\Controllers\UiController;
 use Illuminate\Support\Facades\Route;
 
 // Endpoint login admin (Public)
@@ -28,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::apiResource('pelanggan', PelangganController::class);
 Route::apiResource('slot-pendakian', SlotPendakianController::class);
 Route::apiResource('booking', BookingController::class);
+Route::post('/pembayaran/{id}/bukti', [PembayaranController::class, 'uploadBukti']);
 Route::apiResource('pembayaran', PembayaranController::class);
 Route::apiResource('kontak', KontakController::class);
 Route::apiResource('konten-galeri', KontenGaleriController::class);
@@ -35,3 +37,9 @@ Route::apiResource('konten-galeri', KontenGaleriController::class);
 // Endpoint Pengaturan
 Route::get('/pengaturan', [PengaturanController::class, 'index']);
 Route::put('/pengaturan', [PengaturanController::class, 'update']);
+
+// Endpoint UI (Upload & List Gambar Halaman)
+Route::get('/ui/images', [UiController::class, 'index']);
+Route::post('/ui/upload', [UiController::class, 'upload']);
+
+
